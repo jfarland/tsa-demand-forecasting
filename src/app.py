@@ -1,5 +1,63 @@
 from h2o_wave import main, app, Q, ui, on, handle_on, data
 from typing import Optional, List
+import pandas as pd
+import plotly.express as px
+from plotly import io as pio
+
+
+# Proposed layout - Page 1 - landing page with problem statement/process diagram and airport images?
+#                   Page 2/3 - Dashboard like tab where we can talk through the data and another page with the forecasts (7, 14 day)
+#
+
+
+
+
+#Start data manipulations and calculations for Page 2 here:
+
+avsp=pd.read_csv('C:/Users/marybeth.simmons_h2o/PycharmProjects/wtf/wave/data/prepared-data/flclt_tsa_dash.csv',
+                 parse_dates=['Date', 'date_time'])
+avsp['Month']=avsp['Date'].dt.to_period('M')
+avsp_sort = avsp.sort_values(by=['Month', 'Airport'])
+avsp_sort['Month']=avsp_sort["Month"].astype(str)
+mytup = avsp_sort[['ID', "Airport", 'Month','Total']]
+mydict = mytup.set_index('ID').T.to_dict('list')
+mydict=dict(sorted(mydict.items(), key=lambda item: item[0]))
+avsp_mnth=avsp.groupby(['Airport','Month'])[['Airport','Total','Flights','Booths','Month','Max_wait_total','0-15','16-30','31-45',
+                                   '46-60']].agg({'Airport': 'first', 'Month': 'first', 'Booths': 'median',
+                                                  'Max_wait_total': 'median', 'Flights': 'sum', 'Total': 'sum',
+                                                  '0-15': 'sum', '16-30': 'sum', '31-45': 'sum', '46-60': 'sum'})
+avsp_mnth['Month'] = avsp_mnth['Month'].astype(str)
+avsp_mnth['Month'] = pd.to_datetime(avsp_mnth['Month'])
+pl_fig = px.line(avsp_mnth, x='Month', y='Total', color='Airport')
+p_mt = pio.to_html(pl_fig, validate=False, include_plotlyjs='cdn',
+                  # config=confi
+       )
+val_list=avsp_mnth.values.tolist()
+var_list=avsp_mnth.columns.tolist()
+df_fore_m=pd.read_csv('C:/Users/marybeth.simmons_h2o/PycharmProjects/wtf/wave/data/prepared-data/'
+                    'h2oai_experiment_flclt_tsa_monthly_train_dataset_FLCLT_tsa_train_pred.csv',
+                 parse_dates=['Date', 'date_time'])
+
+df_fore_w=pd.read_csv('C:/Users/marybeth.simmons_h2o/PycharmProjects/wtf/wave/data/prepared-data/'
+                    'h2oai_experiment_nokabaki_train_dataset_FLCLT_tsa_train_predictions.csv',
+                 parse_dates=['Date', 'date_time'])
+column_days=df_fore_w['Date']
+
+
+# Start forecast data manipulation
+actual=["Actual"]
+predict=["Predicted"]
+
+# Predicted Data sets (bi-weekly and weekly)
+pred_df_m=df_fore_m[df_fore_m['type'].isin(predict)]
+pred_df_w=df_fore_w[df_fore_w['type'].isin(predict)]
+
+# Actual Data sets (bi-weekly and weekly)
+df_real_m=df_fore_m[df_fore_m['type'].isin(actual)]
+df_real_w=df_fore_w[df_fore_w['type'].isin(actual)]
+
+
+
 
 
 # Use for page cards that should be removed when navigating away.
@@ -37,70 +95,37 @@ Vestibulum condimentum consectetur aliquet. Phasellus mollis at nulla vel blandi
     ))
 
 
+
+
 @on('#page2')
 async def page2(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
-    add_card(q, 'chart1', ui.plot_card(
-        box='horizontal',
-        title='Chart 1',
-        data=data('category country product price', 10, rows=[
-            ('G1', 'USA', 'P1', 124),
-            ('G1', 'China', 'P2', 580),
-            ('G1', 'USA', 'P3', 528),
-            ('G1', 'China', 'P1', 361),
-            ('G1', 'USA', 'P2', 228),
-            ('G2', 'China', 'P3', 418),
-            ('G2', 'USA', 'P1', 824),
-            ('G2', 'China', 'P2', 539),
-            ('G2', 'USA', 'P3', 712),
-            ('G2', 'USA', 'P1', 213),
-        ]),
-        plot=ui.plot([ui.mark(type='interval', x='=product', y='=price', color='=country', stack='auto',
-                              dodge='=category', y_min=0)])
-    ))
-    add_card(q, 'chart2', ui.plot_card(
-        box='horizontal',
-        title='Chart 2',
-        data=data('date price', 10, rows=[
-            ('2020-03-20', 124),
-            ('2020-05-18', 580),
-            ('2020-08-24', 528),
-            ('2020-02-12', 361),
-            ('2020-03-11', 228),
-            ('2020-09-26', 418),
-            ('2020-11-12', 824),
-            ('2020-12-21', 539),
-            ('2020-03-18', 712),
-            ('2020-07-11', 213),
-        ]),
-        plot=ui.plot([ui.mark(type='line', x_scale='time', x='=date', y='=price', y_min=0)])
-    ))
-    add_card(q, 'table', ui.form_card(box='vertical', items=[ui.table(
-        name='table',
-        downloadable=True,
-        resettable=True,
-        groupable=True,
-        columns=[
-            ui.table_column(name='text', label='Process', searchable=True),
-            ui.table_column(name='tag', label='Status', filterable=True, cell_type=ui.tag_table_cell_type(
-                name='tags',
-                tags=[
-                    ui.tag(label='FAIL', color='$red'),
-                    ui.tag(label='DONE', color='#D2E3F8', label_color='#053975'),
-                    ui.tag(label='SUCCESS', color='$mint'),
-                ]
-            ))
-        ],
-        rows=[
-            ui.table_row(name='row1', cells=['Process 1', 'FAIL']),
-            ui.table_row(name='row2', cells=['Process 2', 'SUCCESS,DONE']),
-            ui.table_row(name='row3', cells=['Process 3', 'DONE']),
-            ui.table_row(name='row4', cells=['Process 4', 'FAIL']),
-            ui.table_row(name='row5', cells=['Process 5', 'SUCCESS,DONE']),
-            ui.table_row(name='row6', cells=['Process 6', 'DONE']),
-        ])
-    ]))
 
+    add_card(q, 'chart2', ui.frame_card(
+        box='lhs',
+        title='Total Passengers by Airport & Month',
+        content=p_mt))
+
+    add_card(q, 'chart1', ui.plot_card(
+        box='rhs',
+        title='Daily Total Passengers by Month',
+        data=data('Airport Month Total', rows=mydict),
+        plot=ui.plot([ui.mark(type='point', x_scale='time-category', x='=Month', y='=Total', color='=Airport',
+                              dodge='auto'
+                              ,
+                              # y_min=50
+                              )])
+    ))
+
+    add_card(q, 'table', ui.form_card(box='vertical',
+                                      items=[ui.text(make_markdown_table(
+                                          fields=var_list,
+                                          rows=val_list
+                                      ))],
+                                      ))
+
+
+# Haven't touched this yet but plan on having the actual forecast land here.
 
 @on('#page3')
 async def page3(q: Q):
@@ -178,14 +203,18 @@ async def init(q: Q) -> None:
         ui.zone('header'),
         ui.zone('content', zones=[
             # Specify various zones and use the one that is currently needed. Empty zones are ignored.
-            ui.zone('horizontal', direction=ui.ZoneDirection.ROW),
+            ui.zone('horizontal', direction=ui.ZoneDirection.ROW,
+                    zones=[ui.zone('lhs', size='45%'), ui.zone('rhs', size='55%')]),
+            ui.zone('horizontal2', direction=ui.ZoneDirection.ROW),
             ui.zone('vertical'),
             ui.zone('grid', direction=ui.ZoneDirection.ROW, wrap='stretch', justify='center')
         ]),
-    ])])
+    ])],
+                                  theme='lighting')
+
     q.page['header'] = ui.header_card(
-        box='header', title='My app', subtitle="Let's conquer the world",
-        image='https://wave.h2o.ai/img/h2o-logo.svg',
+        box='header', title='TSA Demand Forecasting', subtitle="Let's conquer the world",
+        image="https://www.tsa.gov/sites/default/files/styles/news_width_300/public/tsa_insignia_rgb.jpg?itok=U15GtY-Y",
         secondary_items=[
             ui.tabs(name='tabs', value=f'#{q.args["#"]}' if q.args['#'] else '#page1', link=True, items=[
                 ui.tab(name='#page1', label='Home'),
@@ -195,14 +224,13 @@ async def init(q: Q) -> None:
             ]),
         ],
         items=[
-            ui.persona(title='John Doe', subtitle='Developer', size='xs',
-                       image='https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&h=750&w=1260'),
+            ui.persona(title='Jane Doe', subtitle='Developer', size='xs',
+                       image='https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&h=750&w=1260'),
         ]
     )
     # If no active hash present, render page1.
     if q.args['#'] is None:
         await page1(q)
-
 
 @app('/')
 async def serve(q: Q):
