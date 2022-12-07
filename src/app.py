@@ -57,6 +57,16 @@ df_real_m=df_fore_m[df_fore_m['type'].isin(actual)]
 df_real_w=df_fore_w[df_fore_w['type'].isin(actual)]
 
 
+def make_markdown_row(values):
+    return f"| {' | '.join([str(x) for x in values])} |"
+
+
+def make_markdown_table(fields, rows):
+    return '\n'.join([
+        make_markdown_row(fields),
+        make_markdown_row('-' * len(fields)),
+        '\n'.join([make_markdown_row(row) for row in rows]),
+    ])
 
 
 
