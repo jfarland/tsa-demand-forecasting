@@ -5,6 +5,13 @@ import plotly.express as px
 from plotly import io as pio
 
 import datatable as dt
+import requests
+import json
+
+model_dict = {
+    'one-week':'https://model.internal.dedicated.h2o.ai/806c196d-db50-4068-b1ab-71f07b3c00bb/model/score',
+    'two-week':'https://model.internal.dedicated.h2o.ai/101ff2f1-2e2b-4ab9-b766-adfa1588d08e/model/score'
+}
 
 
 #Start data manipulations and calculations for Page 2 here:
@@ -51,16 +58,6 @@ pred_df_w=df_fore_w[df_fore_w['type'].isin(predict)]
 df_real_m=df_fore_m[df_fore_m['type'].isin(actual)]
 df_real_w=df_fore_w[df_fore_w['type'].isin(actual)]
 
-def make_markdown_row(values):
-    return f"| {' | '.join([str(x) for x in values])} |"
-
-def make_markdown_table(fields, rows):
-    return '\n'.join([
-        make_markdown_row(fields),
-        make_markdown_row('-' * len(fields)),
-        '\n'.join([make_markdown_row(row) for row in rows]),
-    ])
-
 # Use for page cards that should be removed when navigating away.
 # For pages that should be always present on screen use q.page[key] = ...
 def add_card(q, name, card) -> None:
@@ -80,20 +77,22 @@ def clear_cards(q, ignore: Optional[List[str]] = []) -> None:
 async def handle_home(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
 
-    for i in range(3):
-        add_card(q, f'info{i}', ui.tall_info_card(box='horizontal', name='', title='Speed',
-                                                  caption='The models are performant thanks to...', icon='SpeedHigh'))
     add_card(q, 'article', ui.tall_article_preview_card(
-        box=ui.box('vertical', height='600px'), title='How does magic work',
+        box=ui.box('horizontal2', height='900px'), 
+        title='Mission Readiness through Optimization',
+        subtitle='Powered by Artificial Intelligence',
+        name='main_button',
         #image='https://images.pexels.com/photos/624015/pexels-photo-624015.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-        image='https://images.pexels.com/photos/4671912/pexels-photo-4671912.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        #image='https://images.pexels.com/photos/4671912/pexels-photo-4671912.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
+        image='https://i.imgur.com/IQoObId.jpg',
         content='''
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum ac sodales felis. Duis orci enim, iaculis at augue vel, mattis imperdiet ligula. Sed a placerat lacus, vitae viverra ante. Duis laoreet purus sit amet orci lacinia, non facilisis ipsum venenatis. Duis bibendum malesuada urna. Praesent vehicula tempor volutpat. In sem augue, blandit a tempus sit amet, tristique vehicula nisl. Duis molestie vel nisl a blandit. Nunc mollis ullamcorper elementum.
-Donec in erat augue. Nullam mollis ligula nec massa semper, laoreet pellentesque nulla ullamcorper. In ante ex, tristique et mollis id, facilisis non metus. Aliquam neque eros, semper id finibus eu, pellentesque ac magna. Aliquam convallis eros ut erat mollis, sit amet scelerisque ex pretium. Nulla sodales lacus a tellus molestie blandit. Praesent molestie elit viverra, congue purus vel, cursus sem. Donec malesuada libero ut nulla bibendum, in condimentum massa pretium. Aliquam erat volutpat. Interdum et malesuada fames ac ante ipsum primis in faucibus. Integer vel tincidunt purus, congue suscipit neque. Fusce eget lacus nibh. Sed vestibulum neque id erat accumsan, a faucibus leo malesuada. Curabitur varius ligula a velit aliquet tincidunt. Donec vehicula ligula sit amet nunc tempus, non fermentum odio rhoncus.
-Vestibulum condimentum consectetur aliquet. Phasellus mollis at nulla vel blandit. Praesent at ligula nulla. Curabitur enim tellus, congue id tempor at, malesuada sed augue. Nulla in justo in libero condimentum euismod. Integer aliquet, velit id convallis maximus, nisl dui porta velit, et pellentesque ligula lorem non nunc. Sed tincidunt purus non elit ultrices egestas quis eu mauris. Sed molestie vulputate enim, a vehicula nibh pulvinar sit amet. Nullam auctor sapien est, et aliquet dui congue ornare. Donec pulvinar scelerisque justo, nec scelerisque velit maximus eget. Ut ac lectus velit. Pellentesque bibendum ex sit amet cursus commodo. Fusce congue metus at elementum ultricies. Suspendisse non rhoncus risus. In hac habitasse platea dictumst.
+This tool is designed to provide high-performance, short-range predictions of required TSA resources across a national grid of airports and terminals. 
+Behind the scenes, a state of the art predictive model is trained using H2O's AI Engines. The model is then deployed and monitored 
+for performance degradation within H2O's Machine Learning Operations (ML Ops)
         '''
     ))
 
+@on('main_button')
 @on('#data')
 async def handle_data(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
@@ -114,36 +113,163 @@ async def handle_data(q: Q):
                               )])
     ))
 
-    # add_card(q, 'table', ui.form_card(box='vertical',
-    #                                   items=[ui.text(make_markdown_table(
-    #                                       fields=var_list,
-    #                                       rows=val_list
-    #                                   ))],
-    #                                   ))
     add_card(q, 'table', ui.form_card(
-                box=ui.box('data_table'),
-                items = [
-                    table_from_df(q.client.df.to_pandas(), name='agg_data', 
-                        downloadable=True, 
-                        sortables=['Month'],
-                        tags={
-                            'Airport': {
-                                'CLT': '$blue',
-                                'TPA': '$red'
-                            }
-                        }
-                    )]
-            ))
-
+        box=ui.box('data_table'),
+        items = [
+            table_from_df(q.client.df_train.to_pandas(), name='agg_data', 
+                searchables=['Airport'],
+                downloadable=True, 
+                sortables=['date_time'],
+                tags={
+                    'Airport': {
+                        'CLT': '$blue',
+                        'TPA': '$red'
+                    }
+                }
+            )]
+    ))
 
 
 @on('#forecast')
 async def handle_forecast(q: Q):
-    clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
+    clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta). 
+    
+    # number of days to lookback and visulize
+    lookback = 60
 
-    for i in range(12):
-        add_card(q, f'item{i}', ui.wide_info_card(box=ui.box('grid', width='400px'), name='', title='Tile',
-                                                  caption='Lorem ipsum dolor sit amet'))
+    models = ['one-week', 'two-week']
+    model_choices = [ui.choice(x, x) for x in models]
+
+    items_list = [
+        ui.text_l(content='Select Forecasting Horizon and Model'),
+        ui.dropdown(name='model_selector', label='Model', value=str(models[0]), choices=model_choices, trigger=True),
+        ui.button(name='predict', label='Predict', primary=True),
+        ui.text_l(content=''),
+        ui.text_l(content=''),
+        ui.text_l(content=''),
+        ui.text_l(content='')
+    ]
+    
+    add_card(q, "inputs", ui.form_card(box=ui.box('inputs', height='600px'), items=items_list))
+
+    if q.args.predict:
+
+
+        df_test = q.client.df_test.to_pandas()
+
+        print(model_dict['one-week'])
+        print(model_dict[q.args.model_selector])
+
+
+        # forecast
+        fcst = get_mlops_preds(
+            endpoint = model_dict[q.args.model_selector],
+            #endpoint = model_dict['one-week'],
+            df = df_test.drop(['Total'], axis=1))
+
+
+        print(f'FORECAST RETRIEVED {pd.DataFrame(fcst[0])}')
+
+        df_test = pd.concat([df_test.drop(['Total'], axis=1), pd.DataFrame(fcst[0])], axis = 1)
+        df_test['Total'] = round(df_test['Total'].astype(float), 2)
+        df_test = df_test.dropna()
+        df_test['Timestamp'] = pd.to_datetime(df_test['date_time']).dt.date
+        df_test['Period'] = 'forecast'
+        df_test = df_test[['Timestamp', 'Period', 'Total']]
+        df_test = df_test.groupby(['Timestamp', 'Period']).agg({'Total':'sum'})
+        df_test = df_test.reset_index()
+            
+        print(df_test.tail())
+
+        df_train = q.client.df_train.to_pandas()
+        df_train = df_train.dropna()
+        df_train['Period'] = 'historical'
+        df_train['Total'] = round(df_train['Total'].astype(float), 2)
+        df_train['Timestamp'] = pd.to_datetime(df_train['date_time']).dt.date
+        df_train['Timestamp'] = df_train['Timestamp'].astype(str)
+        df_train = df_train[['Timestamp', 'Period', 'Total']]
+        df_train = df_train.groupby(['Timestamp', 'Period']).agg({'Total':'sum'})
+        df_train = df_train.tail(lookback)
+        df_train = df_train.reset_index()
+
+        df_full = pd.concat([df_train, df_test], axis = 0)
+
+        df_full['Timestamp'] = df_full['Timestamp'].astype(str)
+        df_full = df_full[df_full['Total'] > 1000]
+        print(df_full.dtypes)
+
+        print(df_full.head())
+        print(df_full.tail())
+
+        # create plot data
+        ts_plot_rows = [tuple(x) for x in df_full.to_numpy()]
+
+        # Create data buffer
+        ts_plot_data = data('timestamp period demand', rows = ts_plot_rows)
+
+        # Reference: https://wave.h2o.ai/docs/examples/plot-line-groups
+        
+        add_card(q, 'timeseries_data_viz', ui.plot_card(
+            box = ui.box('timeseries', height='600px'), 
+            title = 'Time Series Visualization',
+            data = ts_plot_data,
+            plot = ui.plot([
+                ui.mark(
+                    type='path', x='=timestamp', y='=demand', color='=period', 
+                    y_title="Demand", x_title='Time') #color_range=random.choice(colors))
+            ])
+        ))
+
+    else:
+            
+
+        df_full = q.client.df_train.to_pandas()
+        df_full['Period'] = 'historical'
+        df_full['Timestamp'] = pd.to_datetime(df_full['date_time']).dt.date
+        df_full['Timestamp'] = df_full['Timestamp'].astype(str)
+        df_full = df_full[['Timestamp', 'Period', 'Total']]
+        df_full = df_full.groupby(['Timestamp', 'Period']).agg({'Total':'sum'})
+        df_full = df_full.tail(lookback)
+        df_full = df_full.reset_index()
+
+        df_full = df_full[df_full['Total'] > 1000]
+
+
+        # create plot data
+        ts_plot_rows = [tuple(x) for x in df_full.to_numpy()]
+
+        # Create data buffer
+        ts_plot_data = data('timestamp period demand', rows = ts_plot_rows)
+
+        # Reference: https://wave.h2o.ai/docs/examples/plot-line-groups
+        
+        add_card(q, 'timeseries_data_viz', ui.plot_card(
+            box = ui.box('timeseries', height='600px'), 
+            title = 'Time Series Visualization',
+            data = ts_plot_data,
+            plot = ui.plot([
+                ui.mark(
+                    type='path', x='=timestamp', y='=demand', color='=period', 
+                    y_title="Demand", x_title='Time') #color_range=random.choice(colors))
+            ])
+        ))
+
+    # add_card(q, 'experiment_output', ui.form_card(
+    #     box=ui.box('horizontal2'),
+    #     items = [
+    #         table_from_df(df_full, name='agg_data', 
+    #             downloadable=True, 
+    #             sortables=['date_time'],
+    #             tags={
+    #                 'Period': {
+    #                     'historical': '$blue',
+    #                     'forecast': '$orange'
+    #                 }
+    #             })]
+    # ))
+
+
+
 
 async def init(q: Q) -> None:
     q.page['meta'] = ui.meta_card(box='', layouts=[ui.layout(breakpoint='xs', min_height='100vh', zones=[
@@ -151,11 +277,14 @@ async def init(q: Q) -> None:
         ui.zone('content', zones=[
             # Specify various zones and use the one that is currently needed. Empty zones are ignored.
             ui.zone('horizontal', direction=ui.ZoneDirection.ROW,
-                    zones=[ui.zone('lhs', size='45%'), ui.zone('rhs', size='55%')]),
+                zones=[ui.zone('lhs', size='45%'), ui.zone('rhs', size='55%')]),
             ui.zone('horizontal2', direction=ui.ZoneDirection.ROW),
             ui.zone('data_table')
         ]),
-    ])],
+        ui.zone('forecasting', direction=ui.ZoneDirection.ROW,
+                zones=[ui.zone('inputs', size='25%'), ui.zone('timeseries', size='75%')]),
+        ui.zone('footer')]),
+    ],
     theme='lighting')
 
     q.page['header'] = ui.header_card(
@@ -169,12 +298,33 @@ async def init(q: Q) -> None:
             ]),
         ],
         items=[
-            ui.persona(title='Jane Doe', subtitle='Developer', size='xs',
+            ui.persona(title='Jane Doe', subtitle='TSA Agent Coordinator', size='l',
                        image='https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&h=750&w=1260'),
         ]
     )
 
-    q.client.df = dt.fread('./data/prepared-data/Flclt_tsa.csv')
+     # Footer Card
+    q.page["footer"] = ui.footer_card(
+        box="footer", caption="(c) 2022 US Federal Government. All rights reserved.", 
+        items = [
+            ui.inline(justify="end", items = [
+                ui.links(label = "About the TSA", width='200px', items = [
+                    ui.link(label="Mission Statement", path='https://www.tsa.gov/about', target="_blank"),
+                    ui.link(label="Strategy", path="https://www.tsa.gov/about/strategy", target="_blank"),
+                    ui.link(label="Leadership", path="https://www.tsa.gov/about/tsa-leadership", target="_blank"),
+                    ui.link(label="Opportunities", path="https://www.tsa.gov/about/jobs-at-tsa", target="_blank")
+                ]), 
+                ui.links(label = "Artificial Intelligence", width='200px', items = [
+                    ui.link(label="Driverless AI", path='https://h2o.ai/platform/ai-cloud/make/h2o-driverless-ai/', target="_blank"),
+                    ui.link(label="AI Operations", path="https://h2o.ai/platform/ai-cloud/operate/", target="_blank"),
+                    ui.link(label="Document AI", path="https://h2o.ai/platform/ai-cloud/make/document-ai/", target="_blank")
+                ])
+            ])
+        ]
+    )
+
+    q.client.df_train = dt.fread('./data/prepared-data/tsa_demand_train.csv')
+    q.client.df_test = dt.fread('./data/prepared-data/tsa_demand_test.csv')
 
 
     # If no active hash present, render page1.
