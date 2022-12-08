@@ -4,12 +4,7 @@ import pandas as pd
 import plotly.express as px
 from plotly import io as pio
 
-
-# Proposed layout - Page 1 - landing page with problem statement/process diagram and airport images?
-#                   Page 2/3 - Dashboard like tab where we can talk through the data and another page with the forecasts (7, 14 day)
-#
-
-
+import datatable as dt
 
 
 #Start data manipulations and calculations for Page 2 here:
@@ -56,10 +51,8 @@ pred_df_w=df_fore_w[df_fore_w['type'].isin(predict)]
 df_real_m=df_fore_m[df_fore_m['type'].isin(actual)]
 df_real_w=df_fore_w[df_fore_w['type'].isin(actual)]
 
-
 def make_markdown_row(values):
     return f"| {' | '.join([str(x) for x in values])} |"
-
 
 def make_markdown_table(fields, rows):
     return '\n'.join([
@@ -68,14 +61,11 @@ def make_markdown_table(fields, rows):
         '\n'.join([make_markdown_row(row) for row in rows]),
     ])
 
-
-
 # Use for page cards that should be removed when navigating away.
 # For pages that should be always present on screen use q.page[key] = ...
 def add_card(q, name, card) -> None:
     q.client.cards.add(name)
     q.page[name] = card
-
 
 # Remove all the cards related to navigation.
 def clear_cards(q, ignore: Optional[List[str]] = []) -> None:
@@ -86,9 +76,8 @@ def clear_cards(q, ignore: Optional[List[str]] = []) -> None:
             del q.page[name]
             q.client.cards.remove(name)
 
-
-@on('#page1')
-async def page1(q: Q):
+@on('#home')
+async def handle_home(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
 
     for i in range(3):
@@ -96,7 +85,8 @@ async def page1(q: Q):
                                                   caption='The models are performant thanks to...', icon='SpeedHigh'))
     add_card(q, 'article', ui.tall_article_preview_card(
         box=ui.box('vertical', height='600px'), title='How does magic work',
-        image='https://images.pexels.com/photos/624015/pexels-photo-624015.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        #image='https://images.pexels.com/photos/624015/pexels-photo-624015.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+        image='https://images.pexels.com/photos/4671912/pexels-photo-4671912.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750',
         content='''
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum ac sodales felis. Duis orci enim, iaculis at augue vel, mattis imperdiet ligula. Sed a placerat lacus, vitae viverra ante. Duis laoreet purus sit amet orci lacinia, non facilisis ipsum venenatis. Duis bibendum malesuada urna. Praesent vehicula tempor volutpat. In sem augue, blandit a tempus sit amet, tristique vehicula nisl. Duis molestie vel nisl a blandit. Nunc mollis ullamcorper elementum.
 Donec in erat augue. Nullam mollis ligula nec massa semper, laoreet pellentesque nulla ullamcorper. In ante ex, tristique et mollis id, facilisis non metus. Aliquam neque eros, semper id finibus eu, pellentesque ac magna. Aliquam convallis eros ut erat mollis, sit amet scelerisque ex pretium. Nulla sodales lacus a tellus molestie blandit. Praesent molestie elit viverra, congue purus vel, cursus sem. Donec malesuada libero ut nulla bibendum, in condimentum massa pretium. Aliquam erat volutpat. Interdum et malesuada fames ac ante ipsum primis in faucibus. Integer vel tincidunt purus, congue suscipit neque. Fusce eget lacus nibh. Sed vestibulum neque id erat accumsan, a faucibus leo malesuada. Curabitur varius ligula a velit aliquet tincidunt. Donec vehicula ligula sit amet nunc tempus, non fermentum odio rhoncus.
@@ -104,11 +94,8 @@ Vestibulum condimentum consectetur aliquet. Phasellus mollis at nulla vel blandi
         '''
     ))
 
-
-
-
-@on('#page2')
-async def page2(q: Q):
+@on('#data')
+async def handle_data(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
 
     add_card(q, 'chart2', ui.frame_card(
@@ -127,86 +114,36 @@ async def page2(q: Q):
                               )])
     ))
 
-    add_card(q, 'table', ui.form_card(box='vertical',
-                                      items=[ui.text(make_markdown_table(
-                                          fields=var_list,
-                                          rows=val_list
-                                      ))],
-                                      ))
+    # add_card(q, 'table', ui.form_card(box='vertical',
+    #                                   items=[ui.text(make_markdown_table(
+    #                                       fields=var_list,
+    #                                       rows=val_list
+    #                                   ))],
+    #                                   ))
+    add_card(q, 'table', ui.form_card(
+                box=ui.box('data_table'),
+                items = [
+                    table_from_df(q.client.df.to_pandas(), name='agg_data', 
+                        downloadable=True, 
+                        sortables=['Month'],
+                        tags={
+                            'Airport': {
+                                'CLT': '$blue',
+                                'TPA': '$red'
+                            }
+                        }
+                    )]
+            ))
 
 
-# Haven't touched this yet but plan on having the actual forecast land here.
 
-@on('#page3')
-async def page3(q: Q):
+@on('#forecast')
+async def handle_forecast(q: Q):
     clear_cards(q)  # When routing, drop all the cards except of the main ones (header, sidebar, meta).
 
     for i in range(12):
         add_card(q, f'item{i}', ui.wide_info_card(box=ui.box('grid', width='400px'), name='', title='Tile',
                                                   caption='Lorem ipsum dolor sit amet'))
-
-
-@on('#page4')
-async def handle_page4(q: Q):
-    # When routing, drop all the cards except of the main ones (header, sidebar, meta).
-    # Since this page is interactive, we want to update its card instead of recreating it every time, so ignore 'form' card on drop.
-    clear_cards(q, ['form'])
-
-    if q.args.step1:
-        # Just update the existing card, do not recreate.
-        q.page['form'].items = [
-            ui.stepper(name='stepper', items=[
-                ui.step(label='Step 1'),
-                ui.step(label='Step 2'),
-                ui.step(label='Step 3'),
-            ]),
-            ui.textbox(name='textbox2', label='Textbox 1'),
-            ui.buttons(justify='end', items=[
-                ui.button(name='step2', label='Next', primary=True),
-            ])
-        ]
-    elif q.args.step2:
-        # Just update the existing card, do not recreate.
-        q.page['form'].items = [
-            ui.stepper(name='stepper', items=[
-                ui.step(label='Step 1', done=True),
-                ui.step(label='Step 2'),
-                ui.step(label='Step 3'),
-            ]),
-            ui.textbox(name='textbox2', label='Textbox 2'),
-            ui.buttons(justify='end', items=[
-                ui.button(name='step1', label='Cancel'),
-                ui.button(name='step3', label='Next', primary=True),
-            ])
-        ]
-    elif q.args.step3:
-        # Just update the existing card, do not recreate.
-        q.page['form'].items = [
-            ui.stepper(name='stepper', items=[
-                ui.step(label='Step 1', done=True),
-                ui.step(label='Step 2', done=True),
-                ui.step(label='Step 3'),
-            ]),
-            ui.textbox(name='textbox3', label='Textbox 3'),
-            ui.buttons(justify='end', items=[
-                ui.button(name='step2', label='Cancel'),
-                ui.button(name='submit', label='Next', primary=True),
-            ])
-        ]
-    else:
-        # If first time on this page, create the card.
-        add_card(q, 'form', ui.form_card(box='vertical', items=[
-            ui.stepper(name='stepper', items=[
-                ui.step(label='Step 1'),
-                ui.step(label='Step 2'),
-                ui.step(label='Step 3'),
-            ]),
-            ui.textbox(name='textbox1', label='Textbox 1'),
-            ui.buttons(justify='end', items=[
-                ui.button(name='step2', label='Next', primary=True),
-            ]),
-        ]))
-
 
 async def init(q: Q) -> None:
     q.page['meta'] = ui.meta_card(box='', layouts=[ui.layout(breakpoint='xs', min_height='100vh', zones=[
@@ -216,21 +153,19 @@ async def init(q: Q) -> None:
             ui.zone('horizontal', direction=ui.ZoneDirection.ROW,
                     zones=[ui.zone('lhs', size='45%'), ui.zone('rhs', size='55%')]),
             ui.zone('horizontal2', direction=ui.ZoneDirection.ROW),
-            ui.zone('vertical'),
-            ui.zone('grid', direction=ui.ZoneDirection.ROW, wrap='stretch', justify='center')
+            ui.zone('data_table')
         ]),
     ])],
-                                  theme='lighting')
+    theme='lighting')
 
     q.page['header'] = ui.header_card(
-        box='header', title='TSA Demand Forecasting', subtitle="Let's conquer the world",
+        box='header', title='TSA Demand Forecasting', subtitle="AI-powered Optimization and Forecasting",
         image="https://www.tsa.gov/sites/default/files/styles/news_width_300/public/tsa_insignia_rgb.jpg?itok=U15GtY-Y",
         secondary_items=[
-            ui.tabs(name='tabs', value=f'#{q.args["#"]}' if q.args['#'] else '#page1', link=True, items=[
-                ui.tab(name='#page1', label='Home'),
-                ui.tab(name='#page2', label='Charts'),
-                ui.tab(name='#page3', label='Grid'),
-                ui.tab(name='#page4', label='Form'),
+            ui.tabs(name='tabs', value=f'#{q.args["#"]}' if q.args['#'] else '#home', link=True, items=[
+                ui.tab(name='#home', label='Home'),
+                ui.tab(name='#data', label='Data Dashboard'),
+                ui.tab(name='#forecast', label='Predictive Analytics')
             ]),
         ],
         items=[
@@ -238,9 +173,13 @@ async def init(q: Q) -> None:
                        image='https://images.pexels.com/photos/1181424/pexels-photo-1181424.jpeg?auto=compress&h=750&w=1260'),
         ]
     )
+
+    q.client.df = dt.fread('./data/prepared-data/Flclt_tsa.csv')
+
+
     # If no active hash present, render page1.
     if q.args['#'] is None:
-        await page1(q)
+        await handle_home(q)
 
 @app('/')
 async def serve(q: Q):
@@ -254,3 +193,122 @@ async def serve(q: Q):
     await handle_on(q)
     await q.page.save()
 
+### UTILITY FUNCTIONS ####
+
+def table_from_df(
+    df: pd.DataFrame,
+    name: str,
+    sortables: list = None,
+    filterables: list = None,
+    searchables: list = None,
+    numerics: list = None,
+    times: list = None,
+    icons: dict = None,
+    tags: dict = None, 
+    progresses: dict = None,
+    min_widths: dict = None,
+    max_widths: dict = None,
+    link_col: str = None,
+    multiple: bool = False,
+    groupable: bool = False,
+    downloadable: bool = False,
+    resettable: bool = False,
+    height: str = None,
+    checkbox_visibility: str = None
+) -> ui.table:
+    """
+    Convert a Pandas dataframe into Wave ui.table format.
+    """
+
+    if not sortables:
+        sortables = []
+    if not filterables:
+        filterables = []
+    if not searchables:
+        searchables = []
+    if not numerics:
+        numerics = []
+    if not times:
+        times = []
+    if not icons:
+        icons = {}
+    if not tags:
+        tags = {}
+    if not progresses:
+        progresses = {}
+    if not min_widths:
+        min_widths = {}
+    if not max_widths:
+        max_widths = {}
+
+    cell_types = {}
+    for col in icons.keys():
+        cell_types[col] = ui.icon_table_cell_type(color=icons[col]['color'])
+    for col in progresses.keys():
+        cell_types[col] = ui.progress_table_cell_type(color=progresses[col]['color'])
+    for col in tags.keys():
+        cell_types[col] = ui.tag_table_cell_type(name='',tags=[ui.tag(label=str(key), color=str(value)) for key, value in tags[col].items()])
+
+    columns = [ui.table_column(
+        name=str(x),
+        label=str(x),
+        sortable=True if x in sortables else False,
+        filterable=True if x in filterables else False,
+        searchable=True if x in searchables else False,
+        data_type='number' if x in numerics else ('time' if x in times else 'string'),
+        cell_type=cell_types[x] if x in cell_types.keys() else None,
+        min_width=min_widths[x] if x in min_widths.keys() else None,
+        max_width=max_widths[x] if x in max_widths.keys() else None,
+        link=True if x == link_col else False
+    ) for x in df.columns.values]
+
+    rows = [ui.table_row(name=str(i), cells=[str(cell) for cell in row]) for i, row in df.iterrows()]
+
+    table = ui.table(
+        name=name,
+        columns=columns,
+        rows=rows,
+        multiple=multiple,
+        groupable=groupable,
+        downloadable=downloadable,
+        resettable=resettable,
+        height=height,
+        checkbox_visibility=checkbox_visibility
+    )
+
+    return table
+
+def get_mlops_preds(endpoint: str, df: pd.DataFrame, get_shap=None, apply_drift=False):
+    df = df.replace(to_replace=r'"|\'', value='', regex=True)
+
+    rows = df
+
+    vals = rows.values.tolist()
+    for i in range(len(vals)):
+        vals[i] = [str(x) if not pd.isna(x) else '' for x in vals[i]]
+    
+    dictionary = {'fields': df.columns.tolist(), 'rows': vals}
+    if get_shap == 'original':
+        dictionary['requestShapleyValueType'] = 'ORIGINAL'
+    elif get_shap == 'transformed':
+        dictionary['requestShapleyValueType'] = 'TRANSFORMED'
+    elif get_shap == 'both':
+        dictionary['requestShapleyValueType'] = 'BOTH'
+
+    response = requests.post(url=endpoint, json=dictionary)
+
+    if response.status_code == 200:
+        response =  json.loads(response.text)
+    else:
+        return None, response
+
+    preds = pd.DataFrame(data=response['score'], columns=response['fields'])
+
+    if get_shap is not None:
+        data = response['featureShapleyContributions']['contributionGroups'][0]['contributions']
+        fields = response['featureShapleyContributions']['features']
+        explanations = pd.DataFrame(data=data, columns=fields)
+    else:
+        explanations = None
+
+    return preds, explanations
