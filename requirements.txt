@@ -1,0 +1,5 @@
+h2o_wave
+pandas
+plotly
+datatable
+requests

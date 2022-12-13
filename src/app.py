@@ -16,7 +16,7 @@ model_dict = {
 
 #Start data manipulations and calculations for Page 2 here:
 
-avsp=pd.read_csv('./data/prepared-data/flclt_tsa_dash.csv',
+avsp=pd.read_csv('data/prepared-data/Flclt_tsa_dash.csv',
                  parse_dates=['Date', 'date_time'])
 avsp['Month']=avsp['Date'].dt.to_period('M')
 avsp_sort = avsp.sort_values(by=['Month', 'Airport'])
@@ -36,11 +36,11 @@ p_mt = pio.to_html(pl_fig, validate=False, include_plotlyjs='cdn',
        )
 val_list=avsp_mnth.values.tolist()
 var_list=avsp_mnth.columns.tolist()
-df_fore_m=pd.read_csv('./data/prepared-data/'
+df_fore_m=pd.read_csv('data/prepared-data/'
                     'h2oai_experiment_flclt_tsa_monthly_train_dataset_FLCLT_tsa_train_pred.csv',
                  parse_dates=['Date', 'date_time'])
 
-df_fore_w=pd.read_csv('./data/prepared-data/'
+df_fore_w=pd.read_csv('data/prepared-data/'
                     'h2oai_experiment_nokabaki_train_dataset_FLCLT_tsa_train_predictions.csv',
                  parse_dates=['Date', 'date_time'])
 column_days=df_fore_w['Date']
@@ -323,8 +323,8 @@ async def init(q: Q) -> None:
         ]
     )
 
-    q.client.df_train = dt.fread('./data/prepared-data/tsa_demand_train.csv')
-    q.client.df_test = dt.fread('./data/prepared-data/tsa_demand_test.csv')
+    q.client.df_train = dt.fread('data/prepared-data/tsa_demand_train.csv')
+    q.client.df_test = dt.fread('data/prepared-data/tsa_demand_test.csv')
 
 
     # If no active hash present, render page1.

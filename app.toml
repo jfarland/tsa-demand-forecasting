@@ -1,0 +1,28 @@
+[App]
+Name = "ai.h2o.q.tsa-demand-forecasting"
+Version = "0.0.1"
+Title = "TSA Demand Forecasting"
+Description = "Generate AI Based Demand Forecasts"
+Category = "Data Science"
+Keywords = ["internal"]
+LongDescription = "about.md"
+tags = ['TIME SERIES']
+InstanceLifecycle = "ON_DEMAND" 
+
+[Runtime]
+Module = "src.app"
+
+[[Env]]
+Name = "H2O_WAVE_ML_MLOPS_GATEWAY"
+Secret = "h2oai-mlops"
+SecretKey = "gateway"
+
+[[Env]]
+Name = "H2O_WAVE_ML_STEAM_ADDRESS"
+Secret = "h2oai-steam"
+SecretKey = "api"
+
+[[Env]]
+Name = "H2O_WAVE_ML_STEAM_PUBLIC_ADDRESS"
+Secret = "h2oai-steam"
+SecretKey = "public-address"
